@@ -10,7 +10,9 @@ import React, {
 } from "react";
 const Cite = require("citation-js");
 import { mergeClassNames, mergeThemes, Creater, Theme } from "next-mathdoc";
-import { useCitation } from "./useCitation";
+import { useBibliography } from "./useBibliography";
+import { useCSLJSON } from "./useCSLJSON";
+import { CSLJSON } from "./types";
 
 /*\
  * Locale: https://citation.js.org/api/tutorial-output_plugins_csl.html
@@ -19,35 +21,41 @@ import { useCitation } from "./useCitation";
 interface Arguments {
   id: string;
   locale?: [string, string];
+  template?: "apa" | "harvard";
+  lang?: string;
   theme?: Theme | Theme[];
 }
 
 interface Props {
   add?: string;
-  template?: "apa" | "vancouver" | "harvard";
-  lang?: string;
+  use?: string;
   className?: string;
 }
 
 interface BibContext {
-  resources: string[];
-  registerResource: (x: symbol, y: string) => void;
-  unregisterResource: (x: symbol) => void;
+  bibHTML: string;
+  resources: Map<string, CSLJSON>;
+  registerResource: (id: string, resource: CSLJSON) => void;
+  unregisterResource: (id: string) => void;
 }
 
 const initialValue: BibContext = {
-  resources: [],
+  bibHTML: "",
+  resources: new Map(),
   registerResource: () => null,
   unregisterResource: () => null,
 };
 
 const classNames = {
   bibContainer: "mdplugin-bib-container",
+  citeContainer: "mdplugin-cite-container",
 };
 
 export const createBibliography: Creater<Arguments> = ({
   id,
   locale,
+  template = "apa",
+  lang = "en-US",
   theme = [],
 }) => {
   const merged = mergeThemes(classNames, theme);
@@ -58,23 +66,23 @@ export const createBibliography: Creater<Arguments> = ({
     conf.locales.add(locale[0], locale[1]);
   }
 
-  const Bibliography: FC<Props> = ({
-    add,
-    template = "apa",
-    lang = "en-US",
-    className,
-  }) => {
-    const containerStyle = mergeClassNames(merged.bibContainer, className);
-    const symbol = useRef(Symbol()).current;
-    const { resources, registerResource, unregisterResource } = useContext(
-      BibContext
-    );
-    const bibHTML = useCitation(resources, { template, lang });
+  const Bibliography: FC<Props> = ({ add, use = "", className }) => {
+    const options = { template, lang, type: "citation" } as const;
+    const bibStore = useContext(BibContext);
+    const cite = useBibliography(bibStore.resources.get(use), options);
+    const jsonList = useCSLJSON(add);
 
     useEffect(() => {
-      if (add) {
-        registerResource(symbol, add);
-        return () => unregisterResource(symbol);
+      if (add && jsonList) {
+        for (const json of jsonList) {
+          bibStore.registerResource(json.id, json);
+        }
+
+        return () => {
+          for (const json of jsonList) {
+            bibStore.unregisterResource(json.id);
+          }
+        };
       }
     }, [add]);
 
@@ -82,26 +90,41 @@ export const createBibliography: Creater<Arguments> = ({
       return null;
     }
 
+    if (use && cite) {
+      const citeStyle = mergeClassNames(merged.citeContainer, className);
+      return (
+        <div
+          data-mathdoc-id={id}
+          className={citeStyle}
+          dangerouslySetInnerHTML={{ __html: cite }}
+        />
+      );
+    }
+
+    const bibStyle = mergeClassNames(merged.bibContainer, className);
     return (
       <div
         data-mathdoc-id={id}
-        className={containerStyle}
-        dangerouslySetInnerHTML={{ __html: bibHTML }}
+        className={bibStyle}
+        dangerouslySetInnerHTML={{ __html: bibStore.bibHTML }}
       />
     );
   };
 
   const Provider: FC = ({ children }) => {
-    const resourcesMap = useRef(new Map<symbol, any>()).current;
+    const options = { template, lang, type: "bibliography" } as const;
+    const resourcesMap = useRef(new Map<string, CSLJSON>()).current;
+    const bibHTML = useBibliography([...resourcesMap.values()], options);
     const [toggle, setToggle] = useState(true);
     const value: BibContext = useMemo(
       () => ({
-        resources: [...resourcesMap.values()],
-        registerResource: (id: symbol, resource: string) => {
+        bibHTML: bibHTML || "",
+        resources: resourcesMap,
+        registerResource: (id: string, resource: CSLJSON) => {
           resourcesMap.set(id, resource);
           setToggle(!toggle);
         },
-        unregisterResource: (id: symbol) => {
+        unregisterResource: (id: string) => {
           resourcesMap.delete(id);
           setToggle(!toggle);
         },

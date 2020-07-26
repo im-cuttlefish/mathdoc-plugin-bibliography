@@ -1,6 +1,6 @@
 {
-  "name": "library-boilerplate",
-  "version": "1.0.0",
+  "name": "mathdoc-plugin-bibliography",
+  "version": "0.2.1",
   "description": "",
   "private": false,
   "main": "dist/index.js",
@@ -19,14 +19,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/im-cuttlefish/**.git"
+    "url": "git+https://github.com/im-cuttlefish/mathdoc-plugin-bibliography.git"
   },
   "author": "im-cuttlefish",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/im-cuttlefish/**/issues"
+    "url": "https://github.com/im-cuttlefish/mathdoc-plugin-bibliography/issues"
   },
-  "homepage": "https://github.com/im-cuttlefish/**#readme",
+  "homepage": "https://github.com/im-cuttlefish/mathdoc-plugin-bibliography#readme",
   "dependencies": {
     "citation-js": "^0.5.0-alpha.6",
     "core-js": "^3.6.5"
